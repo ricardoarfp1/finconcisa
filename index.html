@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRE Gerencial - Concisa Pavimentacao</title>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --success: #059669;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: rgba(15, 23, 42, 0.08);
+            --gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        
+        .header {
+            background: var(--gradient);
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .header p { opacity: 0.9; font-size: 1rem; }
+        
+        .header-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        
+        .btn-primary { background: var(--gradient); color: white; width: 100%; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        
+        .btn-white {
+            background: white;
+            color: var(--primary);
+            font-weight: 700;
+            padding: 0.75rem 1.25rem;
+        }
+        .btn-white:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #059669; }
+        .alert-info { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+        .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
+        .alert-warning { background: #fef3c7; color: #92400e; border-left: 4px solid #f59e0b; }
+        
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1.5rem;
+            z-index: 999;
+        }
+        
+        .loading-screen.hidden { display: none; }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        
+        .config-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        
+        .config-modal.active { display: flex; }
+        
+        .config-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .config-content h2 { margin-bottom: 0.5rem; color: var(--text-primary); }
+        .config-content > p { color: var(--text-secondary); margin-bottom: 1.5rem; }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            float: right;
+            padding: 0;
+        }
+        
+        .config-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-family: monospace;
+            margin-bottom: 1rem;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .control-group {
+            background: var(--bg-card);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .control-group select,
+        .control-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px var(--shadow);
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px var(--shadow); }
+        .metric-card.positive { border-left-color: var(--success); }
+        .metric-card.negative { border-left-color: var(--danger); }
+        .metric-card.neutral { border-left-color: var(--primary); }
+        
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 1200px) { .content-grid { grid-template-columns: 1fr; } }
+        
+        .card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .card-title { font-size: 1.25rem; font-weight: 700; }
+        .card-subtitle { font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.25rem; }
+        
+        .dre-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+        
+        .dre-table th {
+            padding: 0.875rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            background: var(--bg-main);
+        }
+        
+        .dre-table th:not(:first-child) { text-align: right; }
+        
+        .dre-table td {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border);
+        }
+        
+        .dre-table td:not(:first-child) {
+            text-align: right;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .dre-table tr.category { background: var(--bg-main); font-weight: 700; }
+        .dre-table tr.total { background: #f1f5f9; font-weight: 700; border-top: 2px solid var(--primary); }
+        .dre-table tr.result { 
+            background: var(--gradient); 
+            color: white; 
+            font-weight: 700; 
+            font-size: 1.05rem;
+        }
+        .dre-table tr.result td { border-top: 3px solid var(--primary); }
+        
+        .indent-1 td:first-child { padding-left: 2.5rem; font-size: 0.9rem; }
+        
+        .positive-value { color: var(--success); }
+        .negative-value { color: var(--danger); }
+        
+        .chart-container { position: relative; height: 400px; margin-top: 1rem; }
+        
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            background: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-family: inherit;
+        }
+        
+        .tab:hover { color: var(--primary); }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .full-width { grid-column: 1 / -1; }
+        
+        .footer-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-top: 2rem;
+            box-shadow: 0 2px 8px var(--shadow);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .source-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        .last-update {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .config-section {
+            background: var(--bg-main);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .config-section h4 {
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        
+        .config-section p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .config-section ol {
+            margin-left: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .config-section ol li { margin-bottom: 0.25rem; }
+        
+        code {
+            background: white;
+            padding: 0.125rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.85rem;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- TELA DE CARREGAMENTO -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Carregando dados do Google Sheets...</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary); max-width: 400px; text-align: center;" id="loadingSubtext">
+            Por favor aguarde, conectando a planilha...
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>DRE Gerencial</h1>
+                <p>Concisa Pavimentacao e Terraplanagem</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-white" onclick="recarregarDados()">
+                    Atualizar
+                </button>
+                <button class="btn btn-white" onclick="abrirConfig()" title="Configuracao">
+                    Config
+                </button>
+            </div>
+        </div>
+        
+        <div class="alert alert-success" id="statusAlert">
+            <span style="font-size: 1.5rem;">OK</span>
+            <div>
+                <strong>Dashboard ativo</strong>
+                <span class="source-badge" id="sourceBadge">Google Sheets ao vivo</span><br>
+                <span id="dataInfo">Carregando...</span><br>
+                <span class="last-update" id="lastUpdate"></span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Regime</label>
+                <select id="regimeFilter" onchange="atualizarDashboard()">
+                    <option value="COMPETENCIA" selected>Competencia</option>
+                    <option value="CAIXA">Caixa</option>
+                    <option value="TODOS">Ambos</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Periodo Inicial</label>
+                <input type="month" id="periodoInicio" onchange="atualizarDashboard()">
+            </div>
+            
+            <div class="control-group">
+                <label>Periodo Final</label>
+                <input type="month" id="periodoFim" onchange="atualizarDashboard()">
+            </div>
+            
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button class="btn btn-primary" onclick="atualizarDashboard()">Aplicar Filtros</button>
+            </div>
+        </div>
+        
+        <div class="metrics-grid" id="metricsGrid"></div>
+        
+        <div class="content-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">DRE Gerencial</h2>
+                        <p class="card-subtitle">Demonstracao do Resultado</p>
+                    </div>
+                    <button class="btn btn-small" onclick="exportarDRE()">Exportar CSV</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="dre-table" id="dreTable"></table>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Analise Vertical</h2>
+                        <p class="card-subtitle">% sobre Receita Total</p>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="dre-table" id="analiseVerticalTable"></table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card full-width" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Analise Grafica</h2>
+                    <p class="card-subtitle">Visualizacao dos Resultados</p>
+                </div>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="mudarTab(event, 'evolucao')">Evolucao Mensal</button>
+                <button class="tab" onclick="mudarTab(event, 'composicao')">Composicao Receitas</button>
+                <button class="tab" onclick="mudarTab(event, 'custos')">Breakdown Custos</button>
+                <button class="tab" onclick="mudarTab(event, 'margens')">Margens</button>
+            </div>
+            
+            <div class="tab-content active" id="tab-evolucao">
+                <div class="chart-container"><canvas id="evolucaoChart"></canvas></div>
+            </div>
+            <div class="tab-content" id="tab-composicao">
+                <div class="chart-container"><canvas id="composicaoChart"></canvas></div>
+            </div>
+            <div class="tab-content" id="tab-custos">
+                <div class="chart-container"><canvas id="custosChart"></canvas></div>
+            </div>
+            <div class="tab-content" id="tab-margens">
+                <div class="chart-container"><canvas id="margensChart"></canvas></div>
+            </div>
+        </div>
+        
+        <div class="card full-width">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Analise Horizontal</h2>
+                    <p class="card-subtitle">Evolucao mes a mes (12 meses mais recentes)</p>
+                </div>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="dre-table" id="analiseHorizontalTable"></table>
+            </div>
+        </div>
+        
+        <div class="footer-info">
+            Desenvolvido por Valor Solucoes Empresariais | Dashboard Gerencial Online
+        </div>
+    </div>
+    
+    <!-- MODAL DE CONFIGURACAO -->
+    <div class="config-modal" id="configModal">
+        <div class="config-content">
+            <button class="close-modal" onclick="fecharConfig()">&times;</button>
+            <h2>Configuracao do Dashboard</h2>
+            <p>Conecte o dashboard a sua planilha Google Sheets</p>
+            
+            <div class="config-section">
+                <h4>URL do Google Sheets (CSV publicado)</h4>
+                <p>Cole aqui a URL CSV da sua planilha publicada</p>
+                <input type="text" class="config-input" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+                <button class="btn btn-primary" onclick="salvarConfig()" style="width: auto;">Salvar e Recarregar</button>
+            </div>
+            
+            <div class="config-section">
+                <h4>Como obter a URL CSV?</h4>
+                <ol>
+                    <li>Abra sua planilha no Google Sheets</li>
+                    <li>Va em <code>Arquivo > Compartilhar > Publicar na Web</code></li>
+                    <li>Em "Vincular", escolha a aba com os dados</li>
+                    <li>No formato, escolha <code>Valores separados por virgula (.csv)</code></li>
+                    <li>Clique em <code>Publicar</code> e copie o link gerado</li>
+                    <li>Cole o link no campo acima e salve</li>
+                </ol>
+            </div>
+            
+            <div class="config-section">
+                <h4>Estrutura esperada da planilha</h4>
+                <p>A primeira linha deve conter os cabecalhos: <code>CONTA, DATA, DESCRICAO, DETALHE, R$, REGIME, DRE, PLANO</code></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====================================================================
+        // CONFIGURACAO DO GOOGLE SHEETS
+        // Cole aqui a URL do CSV publicado da sua planilha
+        // ====================================================================
+        const CSV_URL_PADRAO = 'COLE_AQUI_A_URL_DO_CSV_DO_GOOGLE_SHEETS';
+        
+        // ====================================================================
+        
+        let DADOS_BRUTOS = [];
+        let charts = {};
+        let csvUrl = '';
+        
+        function getStoredUrl() {
+            try {
+                return localStorage.getItem('csv_url_concisa') || CSV_URL_PADRAO;
+            } catch(e) {
+                return CSV_URL_PADRAO;
+            }
+        }
+        
+        function setStoredUrl(url) {
+            try {
+                localStorage.setItem('csv_url_concisa', url);
+            } catch(e) {
+                console.warn('Nao foi possivel salvar URL no localStorage');
+            }
+        }
+        
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor);
+        }
+        
+        function formatarPercentual(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'percent',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(valor / 100);
+        }
+        
+        function formatarMesExibicao(mes) {
+            const partes = mes.split('-');
+            return partes[1] + '/' + partes[0];
+        }
+        
+        function somarCategoria(dre, categoria) {
+            if (!dre[categoria]) return 0;
+            return Object.values(dre[categoria]).reduce((s, v) => s + v, 0);
+        }
+        
+        function setLoading(visible, text, subtext) {
+            const screen = document.getElementById('loadingScreen');
+            if (visible) {
+                screen.classList.remove('hidden');
+                if (text) document.getElementById('loadingText').textContent = text;
+                if (subtext) document.getElementById('loadingSubtext').textContent = subtext;
+            } else {
+                screen.classList.add('hidden');
+            }
+        }
+        
+        function abrirConfig() {
+            document.getElementById('configModal').classList.add('active');
+            document.getElementById('csvUrl').value = getStoredUrl();
+        }
+        
+        function fecharConfig() {
+            document.getElementById('configModal').classList.remove('active');
+        }
+        
+        function salvarConfig() {
+            const url = document.getElementById('csvUrl').value.trim();
+            if (!url || !url.startsWith('http')) {
+                alert('Por favor, cole uma URL valida do Google Sheets');
+                return;
+            }
+            setStoredUrl(url);
+            csvUrl = url;
+            fecharConfig();
+            carregarDadosDoSheets();
+        }
+        
+        function recarregarDados() {
+            carregarDadosDoSheets();
+        }
+        
+        // ============ NORMALIZACAO E PROCESSAMENTO ============
+        
+        function normalizarTexto(texto) {
+            if (!texto) return '';
+            return String(texto).trim().toUpperCase();
+        }
+        
+        function parsearData(valor) {
+            if (!valor) return null;
+            
+            // Tentar formato YYYY-MM-DD primeiro
+            const matchISO = String(valor).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (matchISO) {
+                return new Date(parseInt(matchISO[1]), parseInt(matchISO[2]) - 1, parseInt(matchISO[3]));
+            }
+            
+            // Tentar formato DD/MM/YYYY
+            const matchBR = String(valor).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (matchBR) {
+                return new Date(parseInt(matchBR[3]), parseInt(matchBR[2]) - 1, parseInt(matchBR[1]));
+            }
+            
+            // Fallback - deixar o JS tentar
+            const date = new Date(valor);
+            if (!isNaN(date.getTime())) return date;
+            
+            return null;
+        }
+        
+        function obterMesDaData(data) {
+            if (!data || isNaN(data.getTime())) return null;
+            const ano = data.getFullYear();
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            return ano + '-' + mes;
+        }
+        
+        function parsearValor(valor) {
+            if (valor === null || valor === undefined || valor === '') return 0;
+            
+            // Se ja for numero
+            if (typeof valor === 'number') return valor;
+            
+            // Se for string, tentar parsear formato BR e EN
+            let str = String(valor).trim();
+            
+            // Remover R$, espacos
+            str = str.replace(/R\$|\s/g, '');
+            
+            // Detectar formato
+            const temVirgula = str.includes(',');
+            const temPonto = str.includes('.');
+            
+            if (temVirgula && temPonto) {
+                // Formato BR: 1.234,56 -> ultima virgula e decimal
+                if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
+                    str = str.replace(/\./g, '').replace(',', '.');
+                }
+                // Formato EN: 1,234.56 -> ultimo ponto e decimal
+                else {
+                    str = str.replace(/,/g, '');
+                }
+            } else if (temVirgula) {
+                // So virgula - assumir decimal BR: 1234,56
+                str = str.replace(',', '.');
+            }
+            // So ponto ou nada - ja esta no formato correto
+            
+            const num = parseFloat(str);
+            return isNaN(num) ? 0 : num;
+        }
+        
+        function processarDadosCSV(linhas) {
+            const agregado = {};
+            let processadas = 0;
+            let ignoradas = 0;
+            
+            linhas.forEach(linha => {
+                try {
+                    const data = parsearData(linha.DATA);
+                    const mes = obterMesDaData(data);
+                    if (!mes) { ignoradas++; return; }
+                    
+                    const regime = normalizarTexto(linha.REGIME);
+                    const dre = normalizarTexto(linha.DRE);
+                    const plano = normalizarTexto(linha.PLANO);
+                    const valor = parsearValor(linha['R$']);
+                    
+                    if (!dre || !plano || dre === 'NAO' || dre === 'NAN' || dre === 'NONE') {
+                        ignoradas++;
+                        return;
+                    }
+                    
+                    if (!plano || plano === 'NAN' || plano === 'NONE') {
+                        ignoradas++;
+                        return;
+                    }
+                    
+                    const chave = mes + '|' + regime + '|' + dre + '|' + plano;
+                    if (!agregado[chave]) {
+                        agregado[chave] = {
+                            MES: mes,
+                            REGIME: regime,
+                            DRE: dre,
+                            PLANO: plano,
+                            valor: 0
+                        };
+                    }
+                    agregado[chave].valor += valor;
+                    processadas++;
+                } catch (err) {
+                    console.warn('Erro ao processar linha:', err);
+                    ignoradas++;
+                }
+            });
+            
+            console.log('Processadas:', processadas, '| Ignoradas:', ignoradas);
+            return Object.values(agregado);
+        }
+        
+        // ============ CARREGAR DADOS DO GOOGLE SHEETS ============
+        
+        async function carregarDadosDoSheets() {
+            csvUrl = getStoredUrl();
+            
+            if (!csvUrl || csvUrl === 'COLE_AQUI_A_URL_DO_CSV_DO_GOOGLE_SHEETS') {
+                setLoading(false);
+                document.getElementById('statusAlert').className = 'alert alert-warning';
+                document.getElementById('statusAlert').innerHTML = '<span style="font-size: 1.5rem;">!</span><div><strong>Configuracao necessaria</strong><br>Clique no botao "Config" no topo para conectar a sua planilha Google Sheets.</div>';
+                abrirConfig();
+                return;
+            }
+            
+            setLoading(true, 'Buscando dados do Google Sheets...', 'Aguarde alguns segundos');
+            
+            try {
+                const response = await fetch(csvUrl);
+                if (!response.ok) {
+                    throw new Error('Erro HTTP ' + response.status + ' - URL pode estar incorreta ou planilha nao publicada');
+                }
+                
+                const csvText = await response.text();
+                
+                setLoading(true, 'Processando dados...', 'Convertendo informacoes');
+                
+                const resultado = await new Promise((resolve, reject) => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: resolve,
+                        error: reject
+                    });
+                });
+                
+                if (!resultado.data || resultado.data.length === 0) {
+                    throw new Error('Planilha vazia ou sem dados');
+                }
+                
+                console.log('Linhas lidas:', resultado.data.length);
+                console.log('Primeira linha:', resultado.data[0]);
+                
+                // Validar colunas
+                const cols = Object.keys(resultado.data[0]);
+                const necessarias = ['DATA', 'R$', 'REGIME', 'DRE', 'PLANO'];
+                const faltando = necessarias.filter(c => !cols.some(col => col.toUpperCase().trim() === c.toUpperCase()));
+                
+                if (faltando.length > 0) {
+                    throw new Error('Colunas faltando: ' + faltando.join(', ') + '. Encontradas: ' + cols.join(', '));
+                }
+                
+                // Processar e agregar
+                DADOS_BRUTOS = processarDadosCSV(resultado.data);
+                
+                if (DADOS_BRUTOS.length === 0) {
+                    throw new Error('Nenhum dado valido apos processamento');
+                }
+                
+                console.log('Registros agregados:', DADOS_BRUTOS.length);
+                
+                inicializarDashboard();
+                setLoading(false);
+                
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                setLoading(false);
+                document.getElementById('statusAlert').className = 'alert alert-error';
+                document.getElementById('statusAlert').innerHTML = '<span style="font-size: 1.5rem;">X</span><div><strong>Erro ao carregar dados</strong><br>' + error.message + '<br><br>Verifique se a planilha esta publicada como CSV. Clique em "Config" para revisar a URL.</div>';
+            }
+        }
+        
+        // ============ DASHBOARD ============
+        
+        function inicializarDashboard() {
+            const meses = [...new Set(DADOS_BRUTOS.map(d => d.MES))].sort();
+            if (meses.length === 0) return;
+            
+            const mesMin = meses[0];
+            const mesMax = meses[meses.length - 1];
+            
+            document.getElementById('periodoInicio').value = mesMin;
+            document.getElementById('periodoFim').value = mesMax;
+            
+            document.getElementById('dataInfo').textContent = 
+                DADOS_BRUTOS.length + ' registros agregados de ' + formatarMesExibicao(mesMin) + ' a ' + formatarMesExibicao(mesMax);
+            
+            const agora = new Date();
+            const horaStr = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+            const dataStr = String(agora.getDate()).padStart(2, '0') + '/' + String(agora.getMonth() + 1).padStart(2, '0') + '/' + agora.getFullYear();
+            document.getElementById('lastUpdate').textContent = 'Ultima atualizacao: ' + dataStr + ' ' + horaStr;
+            
+            atualizarDashboard();
+        }
+        
+        function filtrarDados() {
+            const regime = document.getElementById('regimeFilter').value;
+            const periodoInicio = document.getElementById('periodoInicio').value;
+            const periodoFim = document.getElementById('periodoFim').value;
+            
+            return DADOS_BRUTOS.filter(d => {
+                if (regime !== 'TODOS' && d.REGIME !== regime) return false;
+                if (periodoInicio && d.MES < periodoInicio) return false;
+                if (periodoFim && d.MES > periodoFim) return false;
+                return true;
+            });
+        }
+        
+        function calcularDRE(dados) {
+            const dre = {};
+            dados.forEach(d => {
+                if (!dre[d.DRE]) dre[d.DRE] = {};
+                if (!dre[d.DRE][d.PLANO]) dre[d.DRE][d.PLANO] = 0;
+                dre[d.DRE][d.PLANO] += d.valor;
+            });
+            return dre;
+        }
+        
+        function atualizarDashboard() {
+            const dados = filtrarDados();
+            
+            if (dados.length === 0) {
+                document.getElementById('metricsGrid').innerHTML = 
+                    '<div class="alert alert-warning" style="grid-column: 1/-1;">Nenhum dado encontrado para os filtros selecionados</div>';
+                return;
+            }
+            
+            const dre = calcularDRE(dados);
+            
+            atualizarMetricas(dre);
+            atualizarTabelaDRE(dre);
+            atualizarAnaliseVertical(dre);
+            atualizarAnaliseHorizontal(dados);
+            atualizarGraficos(dados, dre);
+        }
+        
+        function atualizarMetricas(dre) {
+            const receitaOp = dre.RECEITAS ? (dre.RECEITAS['REC OPERACIONAL'] || 0) : 0;
+            const receitaNaoOp = dre.RECEITAS ? (dre.RECEITAS['REC N OPERACIONAL'] || 0) : 0;
+            const receitas = receitaOp + receitaNaoOp;
+            
+            const custosOp = somarCategoria(dre, 'OPERACIONAL');
+            const gastosFixos = somarCategoria(dre, 'GASTOS FIXOS');
+            const impostos = somarCategoria(dre, 'IMPOSTOS');
+            const retiradas = somarCategoria(dre, 'RETIRADAS');
+            
+            const resultado = receitas + custosOp + gastosFixos + impostos + retiradas;
+            const margemLiquida = receitas !== 0 ? (resultado / receitas) * 100 : 0;
+            
+            const metrics = [
+                { label: 'Receita Total', value: formatarMoeda(receitas), type: 'neutral' },
+                { label: 'Custos Operacionais', value: formatarMoeda(Math.abs(custosOp)), type: 'negative' },
+                { label: 'Gastos Fixos', value: formatarMoeda(Math.abs(gastosFixos)), type: 'negative' },
+                { label: 'Resultado Liquido', value: formatarMoeda(resultado), type: resultado >= 0 ? 'positive' : 'negative' },
+                { label: 'Margem Liquida', value: formatarPercentual(margemLiquida), type: margemLiquida >= 0 ? 'positive' : 'negative' }
+            ];
+            
+            document.getElementById('metricsGrid').innerHTML = metrics.map(m => 
+                '<div class="metric-card ' + m.type + '">' +
+                '<div class="metric-label">' + m.label + '</div>' +
+                '<div class="metric-value">' + m.value + '</div>' +
+                '</div>'
+            ).join('');
+        }
+        
+        function atualizarTabelaDRE(dre) {
+            const receitaOp = dre.RECEITAS ? (dre.RECEITAS['REC OPERACIONAL'] || 0) : 0;
+            const receitaNaoOp = dre.RECEITAS ? (dre.RECEITAS['REC N OPERACIONAL'] || 0) : 0;
+            const receitas = receitaOp + receitaNaoOp;
+            
+            const custosOp = somarCategoria(dre, 'OPERACIONAL');
+            const gastosFixos = somarCategoria(dre, 'GASTOS FIXOS');
+            const impostos = somarCategoria(dre, 'IMPOSTOS');
+            const retiradas = somarCategoria(dre, 'RETIRADAS');
+            const investimentos = somarCategoria(dre, 'INVESTIMENTOS');
+            
+            const resultadoOperacional = receitas + custosOp;
+            const resultadoAntesImpostos = resultadoOperacional + gastosFixos + retiradas;
+            const resultadoLiquido = resultadoAntesImpostos + impostos;
+            
+            let html = '<thead><tr><th>Descricao</th><th>Valor (R$)</th></tr></thead><tbody>';
+            
+            html += '<tr class="category"><td>RECEITAS OPERACIONAIS</td><td class="positive-value">' + formatarMoeda(receitaOp) + '</td></tr>';
+            html += '<tr class="category"><td>RECEITAS NAO OPERACIONAIS</td><td class="positive-value">' + formatarMoeda(receitaNaoOp) + '</td></tr>';
+            html += '<tr class="total"><td>(=) RECEITA TOTAL</td><td>' + formatarMoeda(receitas) + '</td></tr>';
+            
+            html += '<tr class="category"><td>(-) CUSTOS OPERACIONAIS</td><td class="negative-value">' + formatarMoeda(custosOp) + '</td></tr>';
+            
+            if (dre.OPERACIONAL) {
+                Object.entries(dre.OPERACIONAL)
+                    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                    .forEach(([plano, valor]) => {
+                        if (Math.abs(valor) > 100) {
+                            html += '<tr class="indent-1"><td>' + plano + '</td><td class="negative-value">' + formatarMoeda(valor) + '</td></tr>';
+                        }
+                    });
+            }
+            
+            html += '<tr class="total"><td>(=) RESULTADO OPERACIONAL</td><td class="' + (resultadoOperacional >= 0 ? 'positive-value' : 'negative-value') + '">' + formatarMoeda(resultadoOperacional) + '</td></tr>';
+            
+            html += '<tr class="category"><td>(-) GASTOS FIXOS</td><td class="negative-value">' + formatarMoeda(gastosFixos) + '</td></tr>';
+            html += '<tr class="category"><td>(-) RETIRADAS</td><td class="negative-value">' + formatarMoeda(retiradas) + '</td></tr>';
+            
+            html += '<tr class="total"><td>(=) RESULTADO ANTES DOS IMPOSTOS</td><td class="' + (resultadoAntesImpostos >= 0 ? 'positive-value' : 'negative-value') + '">' + formatarMoeda(resultadoAntesImpostos) + '</td></tr>';
+            
+            html += '<tr class="category"><td>(-) IMPOSTOS</td><td class="negative-value">' + formatarMoeda(impostos) + '</td></tr>';
+            
+            if (dre.IMPOSTOS) {
+                Object.entries(dre.IMPOSTOS).forEach(([plano, valor]) => {
+                    html += '<tr class="indent-1"><td>' + plano + '</td><td class="negative-value">' + formatarMoeda(valor) + '</td></tr>';
+                });
+            }
+            
+            html += '<tr class="result"><td>(=) RESULTADO LIQUIDO</td><td>' + formatarMoeda(resultadoLiquido) + '</td></tr>';
+            
+            if (investimentos !== 0) {
+                html += '<tr><td colspan="2" style="padding-top: 1rem; color: var(--text-secondary); font-size: 0.85rem; font-style: italic;">Investimentos (abaixo da linha): ' + formatarMoeda(investimentos) + '</td></tr>';
+            }
+            
+            html += '</tbody>';
+            document.getElementById('dreTable').innerHTML = html;
+        }
+        
+        function atualizarAnaliseVertical(dre) {
+            const receitaOp = dre.RECEITAS ? (dre.RECEITAS['REC OPERACIONAL'] || 0) : 0;
+            const receitaNaoOp = dre.RECEITAS ? (dre.RECEITAS['REC N OPERACIONAL'] || 0) : 0;
+            const receitas = receitaOp + receitaNaoOp;
+            
+            if (receitas === 0) {
+                document.getElementById('analiseVerticalTable').innerHTML = '<tbody><tr><td>Sem receitas no periodo</td></tr></tbody>';
+                return;
+            }
+            
+            const custosOp = somarCategoria(dre, 'OPERACIONAL');
+            const gastosFixos = somarCategoria(dre, 'GASTOS FIXOS');
+            const impostos = somarCategoria(dre, 'IMPOSTOS');
+            const retiradas = somarCategoria(dre, 'RETIRADAS');
+            
+            const itens = [
+                { label: 'Receita Operacional', valor: receitaOp, percent: (receitaOp / receitas) * 100 },
+                { label: 'Receita Nao Operacional', valor: receitaNaoOp, percent: (receitaNaoOp / receitas) * 100 },
+                { label: 'Receita Total', valor: receitas, percent: 100, bold: true },
+                { label: 'Custos Operacionais', valor: custosOp, percent: (Math.abs(custosOp) / receitas) * 100 },
+                { label: 'Gastos Fixos', valor: gastosFixos, percent: (Math.abs(gastosFixos) / receitas) * 100 },
+                { label: 'Retiradas', valor: retiradas, percent: (Math.abs(retiradas) / receitas) * 100 },
+                { label: 'Impostos', valor: impostos, percent: (Math.abs(impostos) / receitas) * 100 }
+            ];
+            
+            let html = '<thead><tr><th>Descricao</th><th>Valor</th><th>%</th></tr></thead><tbody>';
+            itens.forEach(item => {
+                const cls = item.bold ? 'total' : '';
+                html += '<tr class="' + cls + '"><td>' + item.label + '</td>';
+                html += '<td class="' + (item.valor >= 0 ? 'positive-value' : 'negative-value') + '">' + formatarMoeda(item.valor) + '</td>';
+                html += '<td>' + formatarPercentual(item.percent) + '</td></tr>';
+            });
+            html += '</tbody>';
+            
+            document.getElementById('analiseVerticalTable').innerHTML = html;
+        }
+        
+        function atualizarAnaliseHorizontal(dados) {
+            const porMes = {};
+            dados.forEach(d => {
+                if (!porMes[d.MES]) porMes[d.MES] = {};
+                if (!porMes[d.MES][d.DRE]) porMes[d.MES][d.DRE] = 0;
+                porMes[d.MES][d.DRE] += d.valor;
+            });
+            
+            const meses = Object.keys(porMes).sort().slice(-12);
+            const categorias = ['RECEITAS', 'OPERACIONAL', 'GASTOS FIXOS', 'RETIRADAS', 'IMPOSTOS'];
+            
+            let html = '<thead><tr><th>Categoria</th>';
+            meses.forEach(m => html += '<th>' + formatarMesExibicao(m) + '</th>');
+            html += '</tr></thead><tbody>';
+            
+            categorias.forEach(cat => {
+                html += '<tr><td><strong>' + cat + '</strong></td>';
+                meses.forEach(mes => {
+                    const valor = porMes[mes] && porMes[mes][cat] ? porMes[mes][cat] : 0;
+                    const cls = valor >= 0 ? 'positive-value' : 'negative-value';
+                    html += '<td class="' + cls + '">' + formatarMoeda(valor) + '</td>';
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody>';
+            document.getElementById('analiseHorizontalTable').innerHTML = html;
+        }
+        
+        function atualizarGraficos(dados, dre) {
+            Object.values(charts).forEach(c => { if (c && c.destroy) c.destroy(); });
+            charts = {};
+            
+            const porMes = {};
+            dados.forEach(d => {
+                if (!porMes[d.MES]) porMes[d.MES] = { receitas: 0, custos: 0 };
+                if (d.DRE === 'RECEITAS') {
+                    porMes[d.MES].receitas += d.valor;
+                } else if (d.DRE !== 'INVESTIMENTOS') {
+                    porMes[d.MES].custos += d.valor;
+                }
+            });
+            
+            const meses = Object.keys(porMes).sort();
+            const labels = meses.map(m => formatarMesExibicao(m));
+            
+            charts.evolucao = new Chart(document.getElementById('evolucaoChart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Receitas', data: meses.map(m => porMes[m].receitas), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)', tension: 0.4, fill: true },
+                        { label: 'Custos', data: meses.map(m => Math.abs(porMes[m].custos)), borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,0.1)', tension: 0.4, fill: true },
+                        { label: 'Resultado', data: meses.map(m => porMes[m].receitas + porMes[m].custos), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: true }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { ticks: { callback: v => formatarMoeda(v) } } }
+                }
+            });
+            
+            const receitaOp = dre.RECEITAS ? (dre.RECEITAS['REC OPERACIONAL'] || 0) : 0;
+            const receitaNaoOp = dre.RECEITAS ? (dre.RECEITAS['REC N OPERACIONAL'] || 0) : 0;
+            
+            charts.composicao = new Chart(document.getElementById('composicaoChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Receitas Operacionais', 'Receitas Nao Operacionais'],
+                    datasets: [{ data: [receitaOp, receitaNaoOp], backgroundColor: ['#3b82f6', '#8b5cf6'] }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+            
+            const custosLabels = [];
+            const custosData = [];
+            if (dre.OPERACIONAL) {
+                Object.entries(dre.OPERACIONAL)
+                    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                    .slice(0, 8)
+                    .forEach(([p, v]) => {
+                        custosLabels.push(p);
+                        custosData.push(Math.abs(v));
+                    });
+            }
+            
+            charts.custos = new Chart(document.getElementById('custosChart'), {
+                type: 'bar',
+                data: {
+                    labels: custosLabels,
+                    datasets: [{ label: 'Custos', data: custosData, backgroundColor: '#dc2626' }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: { x: { ticks: { callback: v => formatarMoeda(v) } } }
+                }
+            });
+            
+            const receitas = receitaOp + receitaNaoOp;
+            const custosOp = somarCategoria(dre, 'OPERACIONAL');
+            const gastosFixos = somarCategoria(dre, 'GASTOS FIXOS');
+            const impostos = somarCategoria(dre, 'IMPOSTOS');
+            
+            const margemBruta = receitas !== 0 ? ((receitas + custosOp) / receitas) * 100 : 0;
+            const margemOperacional = receitas !== 0 ? ((receitas + custosOp + gastosFixos) / receitas) * 100 : 0;
+            const margemLiquida = receitas !== 0 ? ((receitas + custosOp + gastosFixos + impostos) / receitas) * 100 : 0;
+            
+            charts.margens = new Chart(document.getElementById('margensChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Margem Bruta', 'Margem Operacional', 'Margem Liquida'],
+                    datasets: [{
+                        label: 'Margem (%)',
+                        data: [margemBruta, margemOperacional, margemLiquida],
+                        backgroundColor: ['#059669', '#3b82f6', '#8b5cf6']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { ticks: { callback: v => v.toFixed(1) + '%' } } }
+                }
+            });
+        }
+        
+        function mudarTab(event, tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+        
+        function exportarDRE() {
+            const table = document.getElementById('dreTable');
+            let csv = 'Descricao;Valor\n';
+            table.querySelectorAll('tbody tr').forEach(row => {
+                const cols = row.querySelectorAll('td');
+                if (cols.length === 2) {
+                    csv += cols[0].textContent.trim() + ';' + cols[1].textContent.trim() + '\n';
+                }
+            });
+            
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'dre_gerencial.csv';
+            link.click();
+        }
+        
+        // Inicializar
+        window.addEventListener('DOMContentLoaded', function() {
+            carregarDadosDoSheets();
+        });
+    </script>
+</body>
+</html>
