@@ -587,7 +587,7 @@
         // CONFIGURACAO DO GOOGLE SHEETS
         // Cole aqui a URL do CSV publicado da sua planilha
         // ====================================================================
-        const CSV_URL_PADRAO = 'COLE_AQUI_A_URL_DO_CSV_DO_GOOGLE_SHEETS';
+        const CSV_URL_PADRAO = 'https://docs.google.com/spreadsheets/d/1KKz5Ka73i9wHTGjcluZ8_m_Q7sYNSuVsI7T_tCgJo6w/edit?usp=sharing';
         
         // ====================================================================
         
@@ -796,7 +796,7 @@
         async function carregarDadosDoSheets() {
             csvUrl = getStoredUrl();
             
-            if (!csvUrl || csvUrl === 'COLE_AQUI_A_URL_DO_CSV_DO_GOOGLE_SHEETS') {
+            if (!csvUrl || csvUrl === 'https://docs.google.com/spreadsheets/d/1KKz5Ka73i9wHTGjcluZ8_m_Q7sYNSuVsI7T_tCgJo6w/edit?usp=sharing') {
                 setLoading(false);
                 document.getElementById('statusAlert').className = 'alert alert-warning';
                 document.getElementById('statusAlert').innerHTML = '<span style="font-size: 1.5rem;">!</span><div><strong>Configuracao necessaria</strong><br>Clique no botao "Config" no topo para conectar a sua planilha Google Sheets.</div>';
@@ -1215,3 +1215,4 @@
     </script>
 </body>
 </html>
+
